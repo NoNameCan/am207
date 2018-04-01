@@ -1,5 +1,5 @@
 ---
-title: Gelman Schools Theory
+title: Gelman Schools Theory for Topics about Restaurants
 shorttitle: gelmanschoolstheory
 notebook: gelmanschoolstheory.ipynb
 noline: 1
@@ -33,8 +33,6 @@ sns.set_style("whitegrid")
 sns.set_context("poster")
 import pymc3 as pm
 ```
-
-
 
 
 From Gelman:
@@ -86,69 +84,28 @@ This is
 
 >The treatment of the model provided ... is also appropriate for situations in which the variances differ for reasons other than the number of data points in the experiment. In fact, the likelihood  can appear in much more general contexts than that stated here. For example, if the group sizes $n_j$ are large enough, then the means $\bar{y_j}$ are approximately normally distributed, given $\theta_j$, even when the data $y_{ij}$ are not. 
 
-In other problems, like the one on your homework where we will use this model, you are given a $\sigma_2$ calculated from each group or unit. But since you will want  the variance of the sample mean, you will have to calculate the standard error by dividing out by the count in that unit.
+In other problems, like the one on your homework where we will use this model, you are given a $\sigma_j$ calculated from each group or unit. But since you will want  the variance of the sample mean, you will have to calculate the standard error by dividing out by the count in that unit.
+
+## The model for the homework
 
 ![](images/restuarant_model.png)
 
-Let us choose a prior:
+We want to set up a Bayesian model for a reviewer $j$'s opinion of restaurant $k$'s food and service, separately. That is, you will have a model for each restaurant and each aspect (food and serivce). For restaurant $k$, you will have a model for $\{\theta_{jk}^{\text{food}}\}$ and one for $\{\theta_{jk}^{\text{service}}\}$, where $\theta_{jk}$ is the positivity of the opinion of the $j$-th reviewer regarding the $k$-th restaurant. 
 
-$$
-\theta_j \sim N(\mu, \tau^2)
-$$
+To think about this, first just fix a restaurant, say $k=1$..and also fix an aspect, say food. Then the $\thetas$ are just like in the schools problem. We have a bunch of reviews for that restaurant. And each review, given an aspect, has a sample of sentences for the review. For each of these reviews (schools) we have a mean and a variance over the sentiment of the sentences
 
-$\theta_j$ is the parameter we were estimating by the review-topic mean earlier.
+So now, consider the analogs: each review corresponds to a school, and we have a sample of sentences for the review. The multiple reviews (say 8) for a restarant are an analog to the 8 schools. So the overall "treatment" effect we are looking at is really the overall sentiment corresponding to an aspect (say service) of A GIVEN restaurant. 
 
-The second of the formulae above will allow us to share information between reviews within each restaurant.
+Now think of the pooling going on here. Some reviews may say a lot about food and not much about service. Some may say a lot about both. What we are doing os pooling information across these reviews to estimate the overall "treatment": how good is this restaurant really for service, for example
 
-After doing some math, we can calculate the posterior distribution:
+You have to think what quantity in our data naturally corresponds to $\bar{y}_j$'s in the prep school example? How would you calculate the parameter $\sigma_j^2$ in the distribution of $\bar{y}_j$ (note that, contrary to the school example, $\sigma_j^2$ is not provided explictly in the restaurant data).
 
-$$
-p(\theta_j\, \vert \,\bar{y}_{j})\propto p(\bar{y}_{j}\, \vert \,\theta_j) p(\theta_j)
-\propto \exp\left(-\frac{1}{2 \sigma_j^2} \left(\bar{y}_{j}-\theta_j\right)^2\right)  \exp\left(-\frac{1}{2 \tau^2} \left(\theta_j-\mu\right)^2\right)
-$$
+We want to use our model to produce estimates for $\theta_{jk}$'s. Se we will want to pick a few restaurants, for each aspect ("food" and "service") of each restaurant, plot our estimates for the $\theta$'s against the values in the "mean" column (corresponding to this restaurant). And this will shows us our shrinkage from the observed mean sentiments to some "pooled" sentiment.
 
-After some amount of algebra you'll find that this is the kernel of a normal distribution with mean 
-
-$\frac{1}{\sigma^2_{\text{post}}}\left(\frac{\mu}{\tau^2} + \frac{\bar{y}_{j}}{\sigma^2_{j}}\right)$ 
-
-and variance 
-
-$ \sigma^2_{\text{post}} = \left(\frac{1}{\tau^2} + \frac{1}{\sigma^2_{j}}\right)^{-1}$. 
-
-We can simplify the mean further to see a familiar form:
-
-$$
-\mathbb{E}[\theta_j\, \vert \,\bar y_j, \mu, \sigma_j^2, \tau^2] = \frac{\sigma_j^2}{\sigma_j^2 + \tau^2} \mu + \frac{\tau^2}{\sigma_j^2 + \tau^2}\bar{y}_{j}.
-$$
-
-The _posterior mean_ is a weighted average of the prior mean and the observed average. 
-
-## Installation woes
-
-To follow along on this notebook, we are going to use a cutting-edge version of pymc3: the developers add features very fast, and a feature we'd like to use here is the ability of pymc3 to tell us which integrations diverged.
-
-This is what you need to do:
-
-```
-pip install theano==0.9
-pip install pymc3==3.1rc2
-```
+Now you can rank restaurants by these pooled senitivities, with all the caveats that you noticed from the rubber-ducky problem.
 
 
-
-```python
-pm.__version__
-```
-
-
-
-
-
-    '3.1.rc2'
-
-
-
-## Setting up the hierarchical model
+## Setting up the hierarchical model for Gelman Schools
 
 We'll set up the modelled in what is called a "Centered" parametrization which tells us how $\theta_i$ is modelled: it is written to be directly dependent as a normal distribution from the hyper-parameters. 
 
@@ -215,7 +172,11 @@ with schools2:
 ```
 
 
-    100%|██████████| 10000/10000 [00:26<00:00, 372.42it/s]  | 1/10000 [00:00<20:41,  8.05it/s]
+    Multiprocess sampling (2 chains in 2 jobs)
+    NUTS: [nu, tau_log__, mu]
+    100%|██████████| 11000/11000 [00:21<00:00, 520.07it/s]
+    There were 12 divergences after tuning. Increase `target_accept` or reparameterize.
+    There were 9 divergences after tuning. Increase `target_accept` or reparameterize.
 
 
 
@@ -228,27 +189,25 @@ pm.traceplot(trace2)
 
 
 
-    array([[<matplotlib.axes._subplots.AxesSubplot object at 0x11d621630>,
-            <matplotlib.axes._subplots.AxesSubplot object at 0x10fd424a8>],
-           [<matplotlib.axes._subplots.AxesSubplot object at 0x10fd59a20>,
-            <matplotlib.axes._subplots.AxesSubplot object at 0x1206c8160>],
-           [<matplotlib.axes._subplots.AxesSubplot object at 0x120822828>,
-            <matplotlib.axes._subplots.AxesSubplot object at 0x12089cef0>],
-           [<matplotlib.axes._subplots.AxesSubplot object at 0x121331128>,
-            <matplotlib.axes._subplots.AxesSubplot object at 0x1213abcc0>]], dtype=object)
+    array([[<matplotlib.axes._subplots.AxesSubplot object at 0x1187e5588>,
+            <matplotlib.axes._subplots.AxesSubplot object at 0x118844828>],
+           [<matplotlib.axes._subplots.AxesSubplot object at 0x1188a84e0>,
+            <matplotlib.axes._subplots.AxesSubplot object at 0x118900208>],
+           [<matplotlib.axes._subplots.AxesSubplot object at 0x118a48ef0>,
+            <matplotlib.axes._subplots.AxesSubplot object at 0x118aa8e10>],
+           [<matplotlib.axes._subplots.AxesSubplot object at 0x118b1c6a0>,
+            <matplotlib.axes._subplots.AxesSubplot object at 0x118b73a58>]], dtype=object)
 
 
 
 
-![png](gelmanschoolstheory_files/gelmanschoolstheory_17_1.png)
+![png](gelmanschoolstheory_files/gelmanschoolstheory_14_1.png)
 
-
-Ok, so this seems to look better!
 
 
 
 ```python
-plt.plot(trace2['tau_log_'], alpha=0.6)
+plt.plot(trace2['tau_log__'], alpha=0.6)
 plt.axvline(5000, color="r")
 ```
 
@@ -256,15 +215,13 @@ plt.axvline(5000, color="r")
 
 
 
-    <matplotlib.lines.Line2D at 0x121cbe860>
+    <matplotlib.lines.Line2D at 0x117fc9ef0>
 
 
 
 
-![png](gelmanschoolstheory_files/gelmanschoolstheory_19_1.png)
+![png](gelmanschoolstheory_files/gelmanschoolstheory_15_1.png)
 
-
-And the effective number of iterations hs improved as well:
 
 
 
@@ -276,50 +233,19 @@ pm.diagnostics.gelman_rubin(trace2), pm.diagnostics.effective_n(trace2)
 
 
 
-    ({'mu': 1.0000308061571239,
-      'nu': array([ 0.99995748,  0.99995994,  0.99995388,  0.99995464,  0.99995733,
-              0.99995898,  1.00001938,  0.99999721]),
-      'tau': 0.99998481746202439,
-      'tau_log_': 0.9999543464224343,
-      'theta': array([ 0.9999525 ,  0.99995125,  1.00000408,  0.99998158,  1.00023177,
-              0.99997517,  0.99996997,  0.99995046])},
+    ({'mu': 1.0000526347451892,
+      'nu': array([ 1.00003073,  1.00004073,  1.00031098,  0.99998064,  0.99997309,
+              1.00032466,  0.99998265,  0.99996271]),
+      'tau': 1.0003630401055388,
+      'theta': array([ 1.00010116,  0.99995002,  1.00002645,  0.99995831,  1.00019463,
+              1.00015296,  1.00006921,  0.99995178])},
      {'mu': 20000.0,
       'nu': array([ 20000.,  20000.,  20000.,  20000.,  20000.,  20000.,  20000.,
               20000.]),
-      'tau': 9510.0,
-      'tau_log_': 8571.0,
-      'theta': array([ 19246.,  20000.,  20000.,  20000.,  20000.,  20000.,  20000.,
+      'tau': 12191.0,
+      'theta': array([ 18662.,  20000.,  17823.,  20000.,  20000.,  20000.,  20000.,
               20000.])})
 
-
-
-And we reach the true value better as the number of samples increases, decreasing our bias
-
-
-
-```python
-# plot the estimate for the mean of log(τ) cumulating mean
-logtau = trace2['tau_log_']
-mlogtau = [np.mean(logtau[:i]) for i in np.arange(1, len(logtau))]
-plt.figure(figsize=(15, 4))
-plt.axhline(0.7657852, lw=2.5, color='gray')
-plt.plot(mlogtau, lw=2.5)
-plt.ylim(0, 2)
-plt.xlabel('Iteration')
-plt.ylabel('MCMC mean of log(tau)')
-plt.title('MCMC estimation of cumsum log(tau)')
-```
-
-
-
-
-
-    <matplotlib.text.Text at 0x1226a7a20>
-
-
-
-
-![png](gelmanschoolstheory_files/gelmanschoolstheory_23_1.png)
 
 
 How about our divergences? They seem to be more than what we saw in class but note that we have double the number of samples and the divergences are distributed fairly uniformly so we are sure they are false positives.
@@ -334,8 +260,8 @@ print('Percentage of Divergent %.5f' % divperc)
 ```
 
 
-    Number of Divergent 22
-    Percentage of Divergent 0.00220
+    Number of Divergent 21
+    Percentage of Divergent 0.00210
 
 
 
@@ -344,8 +270,8 @@ print('Percentage of Divergent %.5f' % divperc)
 theta_trace = trace2['theta']
 theta0 = theta_trace[:, 0]
 plt.figure(figsize=(10, 6))
-plt.scatter(theta0[divergent == 0], logtau[divergent == 0], color='r')
-plt.scatter(theta0[divergent == 1], logtau[divergent == 1], color='g')
+plt.scatter(theta0[divergent == 0], logtau[divergent == 0], color='r', s=10, alpha=0.05)
+plt.scatter(theta0[divergent == 1], logtau[divergent == 1], color='g', s=20, alpha=0.9)
 plt.axis([-20, 50, -6, 4])
 plt.ylabel('log(tau)')
 plt.xlabel('theta[0]')
@@ -355,7 +281,7 @@ plt.show()
 
 
 
-![png](gelmanschoolstheory_files/gelmanschoolstheory_26_0.png)
+![png](gelmanschoolstheory_files/gelmanschoolstheory_19_0.png)
 
 
-Look how much longer the funnel actually is. And we have explored this much better.
+Look how much longer the funnel actually is. And we have explored this much better. We can now reduce the step size to check that the divergences go away. The reduced step size is not needed for the sampler once we did this, but it is a check that is worth doing to make sure your sampler is ok.
